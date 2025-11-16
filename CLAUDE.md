@@ -12,7 +12,7 @@ This is an Ollama-based chatbot with DuckDuckGo web search integration. It provi
 
 ## Running the Application
 
-**Interactive mode:**
+**Text-based interactive mode:**
 ```bash
 python start.py
 ```
@@ -20,6 +20,18 @@ python start.py
 **Single query mode:**
 ```bash
 python start.py "Your question here"
+```
+
+**Voice-interactive mode (NEW!):**
+```bash
+# Install audio dependencies first: pip install -r requirements_audio.txt
+python start_audio.py
+
+# Test microphone
+python start_audio.py --test
+
+# Single voice query
+python start_audio.py --single
 ```
 
 The application automatically connects to Ollama at `http://localhost:11434` and will use the first available model if `phi3:mini` is not found.

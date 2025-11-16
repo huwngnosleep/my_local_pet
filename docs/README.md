@@ -2,28 +2,37 @@
 
 ## 🚀 Quick Start
 
-- **[Streaming Update Summary](./STREAMING_UPDATE_SUMMARY.md)** - **NEW!** Complete overview of streaming features
-- **[Streaming Quick Start](./streaming_quick_start.md)** - Get started with streaming in 5 minutes
+- **[Audio Chatbot Quick Start](./AUDIO_QUICK_START.md)** - **NEW!** Voice-interactive chatbot (microphone input)
+- **[Streaming Update Summary](./STREAMING_UPDATE_SUMMARY.md)** - Complete overview of streaming features
+- **[Streaming Quick Start](./streaming_quick_start.md)** - Get started with text streaming in 5 minutes
 
 ## Feature Documentation
 
 ### Core Features
 
-1. **[ChatBot Streaming](./chatbot_streaming.md)** - **RECOMMENDED**
+1. **[Audio Chatbot](./audio_chatbot.md)** - **NEW!**
+   - Voice-interactive chatbot using microphone
+   - Speech-to-text conversion (Google API)
+   - Hands-free operation
+   - Streaming text responses
+   - Full tool integration (web search)
+   - Accessibility features
+
+2. **[ChatBot Streaming](./chatbot_streaming.md)** - **RECOMMENDED**
    - Complete chatbot streaming guide
    - Interactive chat with real-time responses
    - Tool integration (web search + streaming)
    - Configuration and best practices
    - Examples and troubleshooting
 
-2. **[Streaming Responses](./streaming_responses.md)**
+3. **[Streaming Responses](./streaming_responses.md)**
    - OllamaClient streaming implementation
    - Real-time token-by-token streaming
    - Two streaming modes (real-time and buffered)
    - Performance comparisons
    - Advanced usage patterns
 
-3. **[HTTP Connection Pooling](./http_connection_pooling.md)**
+4. **[HTTP Connection Pooling](./http_connection_pooling.md)**
    - Connection reuse for 10x performance boost
    - Automatic retry logic
    - Resource management
