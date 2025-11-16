@@ -8,7 +8,7 @@ This is an Ollama-based chatbot with DuckDuckGo web search integration. It provi
 
 # Important notes from owner for Claude Code
 - If you want to write any Markdown docs, write under ./docs folder
-- If you want to write any script for testing purpose, write under ./tests folder
+- If you want to write any script for testing purpose, write under ./tests folder. using ./tests/bash for .sh files, ./test/python for python files
 
 ## Running the Application
 
@@ -41,9 +41,20 @@ The application implements a custom tool-calling system for Ollama models:
 ### Web Search Integration
 
 - Uses `ddgs` library (DuckDuckGo Search)
-- `web_search()` function (line 54) returns formatted results with title, URL, and description
-- Default limit: 5 results
+- `web_search()` function returns compact formatted results
+- Default limit: 3 results
+- Three processing methods for search results:
+  - **EXTRACTION** (default): Algorithmic relevance-based sentence extraction
+  - **SMALL_MODEL**: Uses tinyllama for intelligent summarization
+  - **SIMPLE**: Basic truncation
 - Tool can be disabled per-query with `use_tools=False` parameter
+
+### Timing System
+
+- Tracks and displays execution time for each stage
+- Shows: Initial thinking time, Tool execution time, Final answer time, Total time
+- Configurable via `SHOW_TIMING` global or `show_timing` parameter
+- Helps diagnose timeouts and performance bottlenecks
 
 ### Windows Compatibility
 

@@ -10,6 +10,7 @@ import sys
 import threading
 import time
 import itertools
+from enum import Enum
 from ddgs import DDGS
 
 # Configuration
@@ -18,11 +19,17 @@ MODEL_NAME = "phi3:mini"  # Change to your installed model
 TIMEOUT_FIRST_REQUEST = 120  # Timeout for initial request (seconds)
 TIMEOUT_TOOL_REQUEST = 150   # Timeout for tool result processing (seconds) - compact results reduce context size
 
-# Search result processing method (choose one):
-# "extraction" - Fast algorithmic extraction (RECOMMENDED - no extra model)
-# "small_model" - Use tinyllama to summarize (slower, uses extra model)
-# "simple" - Simple truncation (fastest, least smart)
-SEARCH_PROCESSING = "extraction"
+class SearchProcessingMethod(Enum):
+    """Search result processing methods"""
+    EXTRACTION = "extraction"  # Fast algorithmic extraction (RECOMMENDED - no extra model)
+    SMALL_MODEL = "small_model"  # Use tinyllama to summarize (slower, uses extra model)
+    SIMPLE = "simple"  # Simple truncation (fastest, least smart)
+
+# Search result processing method
+SEARCH_PROCESSING = SearchProcessingMethod.EXTRACTION
+
+# Display timing information
+SHOW_TIMING = True  # Set to False to hide timing info
 
 class LoadingIndicator:
     """Shows a loading animation while AI is thinking"""
@@ -159,13 +166,13 @@ def web_search(query, max_results=3):
                 body = result.get('body', 'No description')
 
                 # Process the description based on config
-                if SEARCH_PROCESSING == "small_model":
+                if SEARCH_PROCESSING == SearchProcessingMethod.SMALL_MODEL:
                     # Option 1: Use small model to summarize
                     body = summarize_with_small_model(body, query)
-                elif SEARCH_PROCESSING == "extraction":
+                elif SEARCH_PROCESSING == SearchProcessingMethod.EXTRACTION:
                     # Option 2: Use simple extraction algorithm (RECOMMENDED)
                     body = extract_relevant_info(body, query, max_length=150)
-                else:  # "simple"
+                else:  # SearchProcessingMethod.SIMPLE
                     # Option 3: Simple truncation
                     if len(body) > 200:
                         body = body[:200].rsplit(' ', 1)[0] + '...'
@@ -246,7 +253,7 @@ def parse_tool_call(response_text):
     except Exception:
         return None, None
 
-def chat(prompt, model=MODEL_NAME, stream=False, show_loading=True, use_tools=True):
+def chat(prompt, model=MODEL_NAME, stream=False, show_loading=True, use_tools=True, show_timing=None):
     """
     Send a prompt to Ollama and get response
 
@@ -256,11 +263,19 @@ def chat(prompt, model=MODEL_NAME, stream=False, show_loading=True, use_tools=Tr
         stream (bool): Stream response (default: False)
         show_loading (bool): Show loading indicator (default: True)
         use_tools (bool): Enable tool usage (default: True)
+        show_timing (bool): Show timing information (default: True)
 
     Returns:
         str: Model's response
     """
+    # Use global config if not specified
+    if show_timing is None:
+        show_timing = SHOW_TIMING
+
     loader = None
+    total_start = time.time()
+    timings = {}
+
     try:
         # Build system prompt with tools if enabled
         if use_tools:
@@ -280,7 +295,10 @@ def chat(prompt, model=MODEL_NAME, stream=False, show_loading=True, use_tools=Tr
             loader = LoadingIndicator("AI is thinking")
             loader.start()
 
+        # Track first request time
+        first_start = time.time()
         response = requests.post(OLLAMA_URL, json=data, timeout=TIMEOUT_FIRST_REQUEST)
+        timings['initial_thinking'] = time.time() - first_start
 
         # Stop loading indicator
         if loader:
@@ -298,10 +316,12 @@ def chat(prompt, model=MODEL_NAME, stream=False, show_loading=True, use_tools=Tr
                     print(f"\n[Using tool: {tool_name}]")
 
                     # Execute the tool
+                    tool_start = time.time()
                     tool_func = TOOLS[tool_name]['function']
                     tool_result = tool_func(**parameters)
+                    timings['tool_execution'] = time.time() - tool_start
 
-                    print(f"[Tool result retrieved]\n")
+                    print(f"[Tool result retrieved in {timings['tool_execution']:.2f}s]\n")
 
                     # Send tool result back to model for final response
                     follow_up_prompt = (
@@ -323,14 +343,32 @@ def chat(prompt, model=MODEL_NAME, stream=False, show_loading=True, use_tools=Tr
                         "stream": stream
                     }
 
+                    # Track final request time
+                    final_start = time.time()
                     final_response = requests.post(OLLAMA_URL, json=final_data, timeout=TIMEOUT_TOOL_REQUEST)
+                    timings['final_answer'] = time.time() - final_start
 
                     if loader:
                         loader.stop()
 
                     if final_response.status_code == 200:
                         final_result = final_response.json()
-                        return final_result.get('response', 'No response')
+                        answer = final_result.get('response', 'No response')
+
+                        # Show timing summary
+                        if show_timing:
+                            timings['total'] = time.time() - total_start
+                            print(f"\n[Timing] Initial: {timings['initial_thinking']:.2f}s | "
+                                  f"Tool: {timings.get('tool_execution', 0):.2f}s | "
+                                  f"Final: {timings.get('final_answer', 0):.2f}s | "
+                                  f"Total: {timings['total']:.2f}s")
+
+                        return answer
+
+            # No tool used - show simple timing
+            if show_timing:
+                timings['total'] = time.time() - total_start
+                print(f"\n[Timing] Total: {timings['total']:.2f}s")
 
             return model_response
 
