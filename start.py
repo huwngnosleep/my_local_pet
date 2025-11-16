@@ -16,7 +16,13 @@ from ddgs import DDGS
 OLLAMA_URL = "http://localhost:11434/api/generate"
 MODEL_NAME = "phi3:mini"  # Change to your installed model
 TIMEOUT_FIRST_REQUEST = 120  # Timeout for initial request (seconds)
-TIMEOUT_TOOL_REQUEST = 180   # Timeout for tool result processing (seconds) - longer because of larger context
+TIMEOUT_TOOL_REQUEST = 150   # Timeout for tool result processing (seconds) - compact results reduce context size
+
+# Search result processing method (choose one):
+# "extraction" - Fast algorithmic extraction (RECOMMENDED - no extra model)
+# "small_model" - Use tinyllama to summarize (slower, uses extra model)
+# "simple" - Simple truncation (fastest, least smart)
+SEARCH_PROCESSING = "extraction"
 
 class LoadingIndicator:
     """Shows a loading animation while AI is thinking"""
@@ -49,16 +55,96 @@ class LoadingIndicator:
         if self.thread:
             self.thread.join()
 
-def web_search(query, max_results=5):
+def extract_relevant_info(text, query, max_length=150):
+    """
+    Extract most relevant sentences from text using simple algorithm
+
+    Args:
+        text (str): Text to extract from
+        query (str): User's query for relevance scoring
+        max_length (int): Maximum characters to return
+
+    Returns:
+        str: Extracted relevant text
+    """
+    # Split into sentences
+    sentences = text.replace('!', '.').replace('?', '.').split('.')
+    sentences = [s.strip() for s in sentences if len(s.strip()) > 10]
+
+    if not sentences:
+        return text[:max_length]
+
+    # Score sentences based on query word overlap
+    query_words = set(query.lower().split())
+    scored_sentences = []
+
+    for sentence in sentences:
+        sentence_words = set(sentence.lower().split())
+        score = len(query_words & sentence_words)  # Count matching words
+        scored_sentences.append((score, sentence))
+
+    # Sort by relevance and take top sentences
+    scored_sentences.sort(reverse=True, key=lambda x: x[0])
+
+    # Build result within max_length
+    result = []
+    current_length = 0
+
+    for score, sentence in scored_sentences:
+        if current_length + len(sentence) <= max_length:
+            result.append(sentence)
+            current_length += len(sentence)
+        else:
+            break
+
+    if not result:
+        return sentences[0][:max_length] + '...'
+
+    return '. '.join(result) + '.'
+
+def summarize_with_small_model(text, query, model="tinyllama"):
+    """
+    Use a small, fast model to summarize search results
+
+    Args:
+        text (str): Text to summarize
+        query (str): Original query for context
+        model (str): Small model name (default: tinyllama)
+
+    Returns:
+        str: Summarized text
+    """
+    try:
+        prompt = f"Summarize this in 1-2 sentences relevant to '{query}': {text}"
+
+        data = {
+            "model": model,
+            "prompt": prompt,
+            "stream": False
+        }
+
+        response = requests.post(OLLAMA_URL, json=data, timeout=30)
+
+        if response.status_code == 200:
+            result = response.json()
+            return result.get('response', text[:200])
+        else:
+            # Fallback to simple truncation
+            return text[:200] + '...'
+    except Exception:
+        # Fallback to simple truncation
+        return text[:200] + '...'
+
+def web_search(query, max_results=3):
     """
     Search the web using DuckDuckGo
 
     Args:
         query (str): Search query
-        max_results (int): Maximum number of results to return
+        max_results (int): Maximum number of results to return (default: 3)
 
     Returns:
-        str: Formatted search results
+        str: Compact formatted search results
     """
     try:
         with DDGS() as ddgs:
@@ -69,11 +155,22 @@ def web_search(query, max_results=5):
 
             formatted_results = []
             for i, result in enumerate(results, 1):
-                formatted_results.append(
-                    f"{i}. {result.get('title', 'No title')}\n"
-                    f"   URL: {result.get('href', 'No URL')}\n"
-                    f"   {result.get('body', 'No description')}\n"
-                )
+                title = result.get('title', 'No title')
+                body = result.get('body', 'No description')
+
+                # Process the description based on config
+                if SEARCH_PROCESSING == "small_model":
+                    # Option 1: Use small model to summarize
+                    body = summarize_with_small_model(body, query)
+                elif SEARCH_PROCESSING == "extraction":
+                    # Option 2: Use simple extraction algorithm (RECOMMENDED)
+                    body = extract_relevant_info(body, query, max_length=150)
+                else:  # "simple"
+                    # Option 3: Simple truncation
+                    if len(body) > 200:
+                        body = body[:200].rsplit(' ', 1)[0] + '...'
+
+                formatted_results.append(f"{i}. {title}\n   {body}")
 
             return "\n".join(formatted_results)
     except Exception as e:
@@ -86,7 +183,7 @@ TOOLS = {
         "description": "Search the web using DuckDuckGo. Use this when you need current information, facts, or data that you don't have in your knowledge base.",
         "parameters": {
             "query": "The search query string",
-            "max_results": "Maximum number of results (default: 5)"
+            "max_results": "Maximum number of results (default: 3)"
         },
         "function": web_search
     }
@@ -226,7 +323,7 @@ def chat(prompt, model=MODEL_NAME, stream=False, show_loading=True, use_tools=Tr
                         "stream": stream
                     }
 
-                    final_response = requests.post(OLLAMA_URL, json=final_data, timeout=180)
+                    final_response = requests.post(OLLAMA_URL, json=final_data, timeout=TIMEOUT_TOOL_REQUEST)
 
                     if loader:
                         loader.stop()
