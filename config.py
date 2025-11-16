@@ -22,6 +22,19 @@ class SearchProcessingMethod(Enum):
     SIMPLE = "simple"
 
 
+class ResponseStyle(Enum):
+    """Response style for model outputs.
+
+    Attributes:
+        CONCISE: Brief, direct answers with minimal elaboration.
+        NORMAL: Balanced responses with moderate detail.
+        DETAILED: Comprehensive answers with full explanations.
+    """
+    CONCISE = "concise"
+    NORMAL = "normal"
+    DETAILED = "detailed"
+
+
 @dataclass
 class OllamaConfig:
     """Configuration for Ollama API client.
@@ -31,11 +44,19 @@ class OllamaConfig:
         model_name: Default model name to use.
         timeout_first_request: Timeout in seconds for initial model request.
         timeout_tool_request: Timeout in seconds for tool result processing.
+        response_style: Style of responses (concise, normal, detailed).
+        temperature: Randomness in generation (0.0-2.0, lower=more focused).
+        num_predict: Maximum number of tokens to generate (-1=unlimited).
+        top_p: Nucleus sampling threshold (0.0-1.0).
     """
     url: str = "http://localhost:11434/api/generate"
     model_name: str = "phi3:mini"
     timeout_first_request: int = 120
     timeout_tool_request: int = 150
+    response_style: ResponseStyle = ResponseStyle.CONCISE
+    temperature: float = 0.1
+    num_predict: int = 50
+    top_p: float = 0.5
 
 
 @dataclass
@@ -130,3 +151,27 @@ class Config:
             method: Processing method to use for search results.
         """
         self.search.processing_method = method
+
+    def set_response_style(self, style: ResponseStyle) -> None:
+        """Set response style for model outputs.
+
+        Args:
+            style: Response style (CONCISE, NORMAL, or DETAILED).
+        """
+        self.ollama.response_style = style
+
+    def set_temperature(self, temperature: float) -> None:
+        """Set generation temperature.
+
+        Args:
+            temperature: Temperature value (0.0-2.0, lower=more focused).
+        """
+        self.ollama.temperature = temperature
+
+    def set_max_tokens(self, num_predict: int) -> None:
+        """Set maximum number of tokens to generate.
+
+        Args:
+            num_predict: Max tokens (-1 for unlimited, positive int to limit).
+        """
+        self.ollama.num_predict = num_predict

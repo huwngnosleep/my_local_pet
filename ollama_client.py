@@ -64,7 +64,8 @@ class OllamaClient:
         prompt: str,
         model: Optional[str] = None,
         stream: bool = False,
-        timeout: Optional[int] = None
+        timeout: Optional[int] = None,
+        options: Optional[Dict[str, Any]] = None
     ) -> ModelResponse:
         """Generate response from model.
 
@@ -73,6 +74,7 @@ class OllamaClient:
             model: Model name (uses config default if None).
             stream: Whether to stream the response.
             timeout: Request timeout in seconds (uses config default if None).
+            options: Additional generation options (temperature, num_predict, etc.).
 
         Returns:
             ModelResponse containing generated text and status.
@@ -83,10 +85,21 @@ class OllamaClient:
         if timeout is None:
             timeout = self.config.timeout_first_request
 
+        # Build options from config if not provided
+        if options is None:
+            options = {
+                "temperature": self.config.temperature,
+                "top_p": self.config.top_p
+            }
+            # Only add num_predict if it's not -1 (unlimited)
+            if self.config.num_predict > 0:
+                options["num_predict"] = self.config.num_predict
+
         data = {
             "model": model,
             "prompt": prompt,
-            "stream": stream
+            "stream": stream,
+            "options": options
         }
 
         try:

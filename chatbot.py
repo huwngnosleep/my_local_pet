@@ -8,7 +8,7 @@ import time
 from typing import Optional, Dict
 from dataclasses import dataclass, field
 
-from config import Config
+from config import Config, ResponseStyle
 from ollama_client import OllamaClient, ModelResponse
 from tool_registry import ToolRegistry, create_default_registry
 from ui import LoadingIndicator, TerminalFormatter
@@ -54,6 +54,34 @@ class ChatBot:
         self.tools = tool_registry or create_default_registry(self.config)
         self.formatter = TerminalFormatter()
 
+    def _get_response_style_instruction(self) -> str:
+        """Get system instruction based on configured response style.
+
+        Returns:
+            System instruction string for the selected response style.
+        """
+        style = self.config.ollama.response_style
+
+        if style == ResponseStyle.CONCISE:
+            return (
+                "You are a helpful assistant that provides brief, direct answers. "
+                "Answer questions concisely without unnecessary elaboration. "
+                "For factual questions, provide only the essential information. "
+                "Do not include background context, explanations, or additional details "
+                "unless explicitly requested."
+            )
+        elif style == ResponseStyle.DETAILED:
+            return (
+                "You are a helpful assistant that provides comprehensive, detailed answers. "
+                "Include relevant context, explanations, examples, and background information. "
+                "Explore topics thoroughly and provide in-depth insights."
+            )
+        else:  # NORMAL
+            return (
+                "You are a helpful assistant that provides clear, balanced answers. "
+                "Include relevant information while keeping responses reasonably concise."
+            )
+
     def chat(
         self,
         prompt: str,
@@ -83,12 +111,16 @@ class ChatBot:
         timing = ChatTiming()
         total_start = time.time()
 
+        # Get response style instruction
+        style_instruction = self._get_response_style_instruction()
+
         # Build prompt with tools if enabled
         if use_tools:
-            system_prompt = self.tools.format_tools_for_prompt()
+            tools_prompt = self.tools.format_tools_for_prompt()
+            system_prompt = f"{style_instruction}\n\n{tools_prompt}"
             full_prompt = f"{system_prompt}\n\nUser: {prompt}\n\nAssistant:"
         else:
-            full_prompt = prompt
+            full_prompt = f"{style_instruction}\n\nUser: {prompt}\n\nAssistant:"
 
         # First model call: decide on tool usage
         loader = None
@@ -136,8 +168,10 @@ class ChatBot:
                     tool_result = f"Tool execution error: {str(e)}"
 
                 # Second model call: generate final answer with tool results
+                tools_prompt = self.tools.format_tools_for_prompt()
+                follow_up_system = f"{style_instruction}\n\n{tools_prompt}"
                 follow_up_prompt = (
-                    f"{system_prompt}\n\n"
+                    f"{follow_up_system}\n\n"
                     f"User: {prompt}\n\n"
                     f"Assistant: {model_response}\n\n"
                     f"Tool Result:\n{tool_result}\n\n"
