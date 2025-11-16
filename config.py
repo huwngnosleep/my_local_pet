@@ -34,7 +34,8 @@ class ResponseStyle(Enum):
     NORMAL = "normal"
     DETAILED = "detailed"
 
-MODEL_NAME = 'phi3:mini'
+# MODEL_NAME = 'phi3:mini'
+MODEL_NAME = 'tinyllama'
 WEB_SEARCH_COMPACT_MODEL = "tinyllama"
 OLLAMA_URL = "http://localhost:11434/api/generate"
 
@@ -57,8 +58,8 @@ class OllamaConfig:
     timeout_first_request: int = 120
     timeout_tool_request: int = 150
     response_style: ResponseStyle = ResponseStyle.CONCISE
-    temperature: float = 0.1
-    num_predict: int = 50
+    temperature: float = 1
+    num_predict: int = 100
     top_p: float = 0.5
 
 
@@ -88,10 +89,12 @@ class UIConfig:
         show_timing: Whether to display timing information.
         show_loading: Whether to show loading animation.
         spinner_chars: Characters to use for loading spinner animation.
+        use_streaming: Whether to use streaming responses in interactive mode.
     """
     show_timing: bool = True
     show_loading: bool = True
     spinner_chars: tuple = ('|', '/', '-', '\\')
+    use_streaming: bool = True
 
 
 class Config:

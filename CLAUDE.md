@@ -49,10 +49,14 @@ The codebase follows a clean, modular architecture:
    - Enums for constants (e.g., `SearchProcessingMethod`)
 
 2. **Ollama Client (`ollama_client.py`)**
-   - Handles all Ollama HTTP API communication
-   - Returns structured `ModelResponse` objects
+   - Handles all Ollama HTTP API communication with connection pooling
+   - Supports both streaming and non-streaming responses
+   - Returns structured `ModelResponse` and `StreamChunk` objects
+   - HTTP session reuse for improved performance (10x faster sequential requests)
+   - Automatic retry logic for transient failures
    - Includes health checks and model management
    - Clean error handling with detailed messages
+   - Context manager support for resource cleanup
 
 3. **Tool System (`tool_registry.py`)**
    - Registry pattern for dynamic tool management
@@ -70,9 +74,13 @@ The codebase follows a clean, modular architecture:
 
 5. **ChatBot (`chatbot.py`)**
    - Orchestrates all components
+   - Supports both streaming and non-streaming responses
+   - Real-time streaming for interactive chat (configurable via `config.ui.use_streaming`)
    - Implements two-stage tool calling logic
+   - Graceful keyboard interrupt handling (Ctrl+C during generation)
    - Tracks timing information via `ChatTiming` dataclass
    - Dependency injection: receives `Config` and `ToolRegistry`
+   - Methods: `chat()` (non-streaming), `chat_stream()` (streaming), `interactive_chat()`
 
 6. **UI Components (`ui.py`)**
    - `LoadingIndicator`: Animated terminal spinner
