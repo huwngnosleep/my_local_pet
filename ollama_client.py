@@ -55,7 +55,7 @@ class OllamaClient:
             config: Ollama configuration including URL and timeouts.
         """
         self.config = config
-        self._base_url = config.url.rsplit('/', 1)[0]  # Remove /api/generate
+        self._base_url = config.url.rsplit('/api/', 1)[0]  # Extract base URL before /api/
         self._generate_url = config.url
         self._tags_url = f"{self._base_url}/api/tags"
 
