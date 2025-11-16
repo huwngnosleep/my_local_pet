@@ -34,6 +34,9 @@ class ResponseStyle(Enum):
     NORMAL = "normal"
     DETAILED = "detailed"
 
+MODEL_NAME = 'phi3:mini'
+WEB_SEARCH_COMPACT_MODEL = "tinyllama"
+OLLAMA_URL = "http://localhost:11434/api/generate"
 
 @dataclass
 class OllamaConfig:
@@ -49,8 +52,8 @@ class OllamaConfig:
         num_predict: Maximum number of tokens to generate (-1=unlimited).
         top_p: Nucleus sampling threshold (0.0-1.0).
     """
-    url: str = "http://localhost:11434/api/generate"
-    model_name: str = "phi3:mini"
+    url: str = OLLAMA_URL
+    model_name: str = MODEL_NAME
     timeout_first_request: int = 120
     timeout_tool_request: int = 150
     response_style: ResponseStyle = ResponseStyle.CONCISE
@@ -67,13 +70,13 @@ class SearchConfig:
         processing_method: Method to use for processing search results.
         max_results: Maximum number of search results to retrieve.
         max_description_length: Maximum character length for descriptions.
-        small_model_name: Model name for small model summarization.
+        search_result_compact_model_name: Model name for small model summarization.
         small_model_timeout: Timeout for small model requests.
     """
     processing_method: SearchProcessingMethod = SearchProcessingMethod.EXTRACTION
     max_results: int = 3
     max_description_length: int = 150
-    small_model_name: str = "tinyllama"
+    search_result_compact_model_name: str = WEB_SEARCH_COMPACT_MODEL
     small_model_timeout: int = 30
 
 

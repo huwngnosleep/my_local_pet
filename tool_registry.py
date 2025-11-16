@@ -41,12 +41,13 @@ class WebSearchTool:
         Args:
             config: Application configuration containing search settings.
         """
+        self.name = "web_search"
         self.config = config
         self.processor: SearchResultProcessor = SearchProcessorFactory.create_processor(
             method=config.search.processing_method,
             ollama_url=config.ollama.url,
             max_length=config.search.max_description_length,
-            model_name=config.search.small_model_name,
+            model_name=config.search.search_result_compact_model_name,
             timeout=config.search.small_model_timeout
         )
 
@@ -249,7 +250,7 @@ def create_default_registry(config: Config) -> ToolRegistry:
     # Register web search tool
     web_search_tool = WebSearchTool(config)
     tool = Tool(
-        name="web_search",
+        name=web_search_tool.name,
         description=(
             "Search the web using DuckDuckGo. Use this when you need "
             "current information, facts, or data that you don't have "

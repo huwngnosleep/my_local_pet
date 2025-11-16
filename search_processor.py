@@ -8,7 +8,7 @@ from abc import ABC, abstractmethod
 from typing import List, Dict, Any
 import requests
 
-from config import SearchProcessingMethod
+from config import SearchProcessingMethod, OLLAMA_URL, WEB_SEARCH_COMPACT_MODEL
 
 
 class SearchResultProcessor(ABC):
@@ -105,7 +105,7 @@ class SmallModelProcessor(SearchResultProcessor):
     def __init__(
         self,
         ollama_url: str,
-        model_name: str = "tinyllama",
+        model_name: str = WEB_SEARCH_COMPACT_MODEL,
         timeout: int = 30
     ):
         """Initialize small model processor.
@@ -192,7 +192,7 @@ class SearchProcessorFactory:
     @staticmethod
     def create_processor(
         method: SearchProcessingMethod,
-        ollama_url: str = "http://localhost:11434/api/generate",
+        ollama_url: str = OLLAMA_URL,
         **kwargs
     ) -> SearchResultProcessor:
         """Create a search result processor.
