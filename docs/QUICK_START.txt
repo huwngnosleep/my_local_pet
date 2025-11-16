@@ -1,0 +1,63 @@
+OLLAMA QUICK START - Ubuntu Server (Intel Pentium, 8GB RAM)
+================================================================
+
+STEP 1: Install Ollama on your Ubuntu Server
+---------------------------------------------
+Run this command:
+
+    curl -fsSL https://ollama.com/install.sh | sh
+
+Or use the automated script:
+
+    chmod +x install_ollama.sh
+    ./install_ollama.sh
+
+
+STEP 2: Pull a Model
+--------------------
+Choose ONE of these models (recommended: phi3:mini):
+
+    ollama pull phi3:mini       # 2.3GB - RECOMMENDED
+    ollama pull gemma:2b        # 1.7GB - Faster
+    ollama pull llama3.2:3b     # 2GB   - Good quality
+    ollama pull tinyllama       # 700MB - Fastest
+
+
+STEP 3: Run Your LLM
+--------------------
+
+Interactive Chat:
+    ollama run phi3:mini
+
+Single Question:
+    ollama run phi3:mini "What is Python?"
+
+API Usage:
+    curl http://localhost:11434/api/generate -d '{"model":"phi3:mini","prompt":"Hello","stream":false}'
+
+Python API:
+    python3 ollama_api_example.py
+
+
+COMMON COMMANDS
+===============
+
+List models:           ollama list
+Remove model:          ollama rm model-name
+Check service:         systemctl status ollama
+View logs:             journalctl -u ollama -f
+Stop service:          sudo systemctl stop ollama
+Start service:         sudo systemctl start ollama
+
+
+TROUBLESHOOTING
+===============
+
+Slow responses?        Normal on Pentium (2-10 sec/response)
+Out of memory?         Use smaller model (gemma:2b or tinyllama)
+Service won't start?   Check logs: journalctl -u ollama
+
+
+FOR MORE DETAILS
+================
+See: OLLAMA_SETUP_GUIDE.md

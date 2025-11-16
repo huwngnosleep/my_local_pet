@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:www.kolosal.ai)",
+      "WebFetch(domain:picovoice.ai)",
+      "WebFetch(domain:www.howtogeek.com)",
+      "WebFetch(domain:itsfoss.com)",
+      "Bash(curl:*)",
+      "Bash(sh:*)",
+      "Bash(pip install:*)",
+      "Bash(python start.py:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
