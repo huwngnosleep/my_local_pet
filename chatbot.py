@@ -54,6 +54,9 @@ class ChatBot:
         self.tools = tool_registry or create_default_registry(self.config)
         self.formatter = TerminalFormatter()
         self.set_model
+        self.system_prompt = """
+            If you're not confident about the answer or don't have enough information, explicitly state your uncertainty or say you don't know. Do not make up facts.
+        """
         
         available_models = self.get_available_models()
         if config.ollama.model_name not in available_models and available_models:
@@ -99,6 +102,8 @@ class ChatBot:
         
         # Get response style instruction
         # if response_style:
+        
+        full_prompt += self.system_prompt
         full_prompt += f"\nStyle instruction: {self._get_response_style_instruction()}\n"
 
         # Build prompt with tools if enabled
