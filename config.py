@@ -59,8 +59,8 @@ class OllamaConfig:
     timeout_tool_request: int = 150
     response_style: ResponseStyle = ResponseStyle.CONCISE
     temperature: float = 0.3
-    num_predict: int = 300
-    top_p: float = 0.5
+    num_predict: int = 100
+    top_p: float = 0.1
 
 
 @dataclass
