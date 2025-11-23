@@ -8,6 +8,7 @@ ddgs>=0.1.0
 # Audio-specific dependencies
 SpeechRecognition>=3.10.0  # Speech-to-text
 PyAudio>=0.2.13            # Microphone access
+pyttsx3>=2.90              # Text-to-speech
 
 # Optional: For better audio handling
 # pydub>=0.25.1            # Audio processing

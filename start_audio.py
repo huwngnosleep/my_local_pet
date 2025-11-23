@@ -18,6 +18,13 @@ except ImportError:
     print("Install with: pip install SpeechRecognition pyaudio")
     sys.exit(1)
 
+try:
+    import pyttsx3
+except ImportError:
+    print("Error: pyttsx3 library not installed")
+    print("Install with: pip install pyttsx3")
+    sys.exit(1)
+
 from chatbot import ChatBot
 from config import Config
 
@@ -44,6 +51,82 @@ class AudioChatBot:
         self.recognizer.energy_threshold = 4000  # Adjust based on environment
         self.recognizer.dynamic_energy_threshold = True
         self.recognizer.pause_threshold = 0.8  # Seconds of silence to consider end
+
+        # Initialize text-to-speech engine
+        self.tts_engine = pyttsx3.init()
+        self._configure_tts()
+
+    def _configure_tts(self):
+        """Configure text-to-speech engine settings."""
+        # Set speech rate (default is usually around 200)
+        self.tts_engine.setProperty('rate', 175)
+
+        # Set volume (0.0 to 1.0)
+        self.tts_engine.setProperty('volume', 1.0)
+
+        # Get available voices and set a default
+        voices = self.tts_engine.getProperty('voices')
+        if voices:
+            # Try to find a female voice for variety (optional)
+            # Default to first available voice
+            self.tts_engine.setProperty('voice', voices[0].id)
+
+    def speak(self, text: str):
+        """Convert text to speech and play it.
+
+        Args:
+            text: The text to speak aloud.
+        """
+        if not text:
+            return
+
+        try:
+            # Clean text for better speech (remove markdown, etc.)
+            clean_text = self._clean_text_for_speech(text)
+
+            print("\n🔊 Speaking...")
+            self.tts_engine.say(clean_text)
+            self.tts_engine.runAndWait()
+        except Exception as e:
+            print(f"[!] TTS error: {e}")
+
+    def _clean_text_for_speech(self, text: str) -> str:
+        """Clean text for better speech output.
+
+        Removes markdown formatting and other elements that don't
+        translate well to speech.
+
+        Args:
+            text: Raw text that may contain markdown.
+
+        Returns:
+            Cleaned text suitable for speech synthesis.
+        """
+        import re
+
+        # Remove code blocks
+        text = re.sub(r'```[\s\S]*?```', '', text)
+        text = re.sub(r'`[^`]+`', '', text)
+
+        # Remove markdown links, keep text
+        text = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', text)
+
+        # Remove markdown formatting
+        text = re.sub(r'\*\*([^*]+)\*\*', r'\1', text)  # Bold
+        text = re.sub(r'\*([^*]+)\*', r'\1', text)      # Italic
+        text = re.sub(r'_([^_]+)_', r'\1', text)        # Underscore italic
+        text = re.sub(r'#+\s*', '', text)               # Headers
+
+        # Remove bullet points
+        text = re.sub(r'^\s*[-*]\s+', '', text, flags=re.MULTILINE)
+
+        # Remove multiple newlines
+        text = re.sub(r'\n{3,}', '\n\n', text)
+
+        # Remove URLs
+        text = re.sub(r'https?://\S+', '', text)
+
+        return text.strip()
 
     def test_microphone(self) -> bool:
         """Test microphone availability.
@@ -182,13 +265,16 @@ class AudioChatBot:
                 print("-" * 60)
 
                 # Process with chatbot (streaming)
+                bot_response = ""
                 try:
-                    self.chatbot.chat_stream(user_speech)
+                    bot_response = self.chatbot.chat_stream(user_speech)
                 except KeyboardInterrupt:
                     print("\n\n⏸️  Response interrupted")
                     continue
 
-                print()
+                # Speak the response
+                if bot_response:
+                    self.speak(bot_response)
 
             except KeyboardInterrupt:
                 print("\n\n👋 Goodbye!")
@@ -222,7 +308,13 @@ class AudioChatBot:
             print(f"\nYou said: {user_speech}\n")
 
             # Process with chatbot
-            return self.chatbot.chat_stream(user_speech)
+            response = self.chatbot.chat_stream(user_speech)
+
+            # Speak the response
+            if response:
+                self.speak(response)
+
+            return response
 
         return ""
 
