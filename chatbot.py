@@ -335,7 +335,7 @@ class ChatBot:
         while True:
             try:
                 print("User:")
-                user_input = input("\n").strip()
+                user_input = input("").strip()
 
                 self.chat_stream(user_prompt=user_input, model=self.config.ollama.model_name)
 
