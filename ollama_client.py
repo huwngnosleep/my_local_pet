@@ -123,6 +123,7 @@ class OllamaClient:
         Returns:
             ModelResponse containing generated text and status.
         """
+        
         if model is None:
             model = self.config.model_name
 

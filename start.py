@@ -40,41 +40,11 @@ def main() -> None:
     # Initialize chatbot
     bot = ChatBot(config=config)
 
-    # Test connection to Ollama
-    print("\nTesting connection to Ollama...")
-    print("-" * 50)
-
     if not bot.test_connection():
-        print("\nPlease install and start Ollama first:")
-        print("  1. Run: curl -fsSL https://ollama.com/install.sh | sh")
-        print("  2. Pull a model: ollama pull phi3:mini")
-        print("  3. Start service: systemctl start ollama")
         sys.exit(1)
 
     print("-" * 50)
-
-    # Check if default model exists, otherwise use first available
-    available_models = bot.get_available_models()
-    if config.ollama.model_name not in available_models and available_models:
-        print(f"\n[!] Default model '{config.ollama.model_name}' not found.")
-        print(f"Using '{available_models[0]}' instead.")
-        bot.set_model(available_models[0])
-
-    print()
-
-    # Determine mode: interactive or single query
-    if len(sys.argv) > 1:
-        # Single query mode
-        prompt = " ".join(sys.argv[1:])
-        print(f"Question: {prompt}\n")
-
-        answer = bot.chat(prompt)
-        print(f"Answer: {answer}")
-
-    else:
-        # Interactive mode
-        bot.interactive_chat()
-
+    bot.interactive_chat()
 
 if __name__ == "__main__":
     main()

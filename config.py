@@ -34,8 +34,8 @@ class ResponseStyle(Enum):
     NORMAL = "normal"
     DETAILED = "detailed"
 
-# MODEL_NAME = 'phi3:mini'
-MODEL_NAME = 'tinyllama'
+MODEL_NAME = 'phi3:mini'
+# MODEL_NAME = 'tinyllama'
 WEB_SEARCH_COMPACT_MODEL = "tinyllama"
 OLLAMA_URL = "http://localhost:11434/api/generate"
 
@@ -58,8 +58,8 @@ class OllamaConfig:
     timeout_first_request: int = 120
     timeout_tool_request: int = 150
     response_style: ResponseStyle = ResponseStyle.CONCISE
-    temperature: float = 1
-    num_predict: int = 100
+    temperature: float = 0.3
+    num_predict: int = 300
     top_p: float = 0.5
 
 
@@ -75,7 +75,7 @@ class SearchConfig:
         small_model_timeout: Timeout for small model requests.
     """
     processing_method: SearchProcessingMethod = SearchProcessingMethod.EXTRACTION
-    max_results: int = 3
+    max_results: int = 5
     max_description_length: int = 150
     search_result_compact_model_name: str = WEB_SEARCH_COMPACT_MODEL
     small_model_timeout: int = 30

@@ -53,6 +53,13 @@ class ChatBot:
         self.client = OllamaClient(self.config.ollama)
         self.tools = tool_registry or create_default_registry(self.config)
         self.formatter = TerminalFormatter()
+        self.set_model
+        
+        available_models = self.get_available_models()
+        if config.ollama.model_name not in available_models and available_models:
+            print(f"\n[!] Default model '{config.ollama.model_name}' not found.")
+            print(f"Using '{available_models[0]}' instead.")
+            self.set_model(available_models[0])
 
     def _get_response_style_instruction(self) -> str:
         """Get system instruction based on configured response style.
@@ -81,7 +88,9 @@ class ChatBot:
                 "You are a helpful assistant that provides clear, balanced answers. "
                 "Include relevant information while keeping responses reasonably concise."
             )
-
+    
+    
+    
     def chat(
         self,
         prompt: str,
@@ -115,13 +124,18 @@ class ChatBot:
         style_instruction = self._get_response_style_instruction()
 
         # Build prompt with tools if enabled
-        if use_tools:
-            tools_prompt = self.tools.format_tools_for_prompt()
-            system_prompt = f"{style_instruction}\n\n{tools_prompt}"
-            full_prompt = f"{system_prompt}\n\nUser: {prompt}\n\nAssistant:"
-        else:
-            full_prompt = f"{style_instruction}\n\nUser: {prompt}\n\nAssistant:"
-
+        # if use_tools:
+        #     tools_prompt = self.tools.format_tools_for_prompt()
+        #     system_prompt = f"{style_instruction}\n\n{tools_prompt}"
+        #     full_prompt = f"{system_prompt}\n\nUser: {prompt}\n\nAssistant:"
+        # else:
+        #     full_prompt = f"""
+        #     {style_instruction}
+        #     \n\n
+        #     User: {prompt}\n\n
+        #     Assistant:
+        #     """
+        full_prompt = prompt
         # First model call: decide on tool usage
         loader = None
         if show_loading:
@@ -168,15 +182,15 @@ class ChatBot:
                     tool_result = f"Tool execution error: {str(e)}"
 
                 # Second model call: generate final answer with tool results
-                tools_prompt = self.tools.format_tools_for_prompt()
-                follow_up_system = f"{style_instruction}\n\n{tools_prompt}"
-                follow_up_prompt = (
-                    f"{follow_up_system}\n\n"
-                    f"User: {prompt}\n\n"
-                    f"Assistant: {model_response}\n\n"
-                    f"Tool Result:\n{tool_result}\n\n"
-                    f"Now provide your final answer to the user based on the tool results:"
-                )
+                # tools_prompt = self.tools.format_tools_for_prompt()
+                # follow_up_system = f"{style_instruction}\n\n{tools_prompt}"
+                # follow_up_prompt = (
+                #     f"{follow_up_system}\n\n"
+                #     f"User: {prompt}\n\n"
+                #     f"Assistant: {model_response}\n\n"
+                #     f"Tool Result:\n{tool_result}\n\n"
+                #     f"Now provide your final answer to the user based on the tool results:"
+                # )
 
                 if show_loading:
                     loader = LoadingIndicator(
@@ -220,13 +234,33 @@ class ChatBot:
 
         return model_response
 
+    def _factory_init_prompt(
+        self,
+        user_prompt: str,
+        use_tools: bool = True,
+        response_style: str = None
+    ) -> str:
+        full_prompt = ""
+        
+        # Get response style instruction
+        if response_style:
+            full_prompt += f"\nStyle instruction: {self._get_response_style_instruction()}\n"
+
+        # Build prompt with tools if enabled
+        if use_tools:
+            full_prompt += f"\nTools prompt: {self.tools.format_tools_for_prompt()}\n"
+
+        full_prompt += user_prompt
+        return full_prompt  
+
     def chat_stream(
         self,
-        prompt: str,
+        user_prompt: str,
         model: Optional[str] = None,
         use_tools: bool = True,
         show_loading: bool = None,
-        show_timing: bool = None
+        show_timing: bool = None,
+        response_style: str = None
     ) -> str:
         """Process a chat message with streaming response.
 
@@ -249,16 +283,7 @@ class ChatBot:
         timing = ChatTiming()
         total_start = time.time()
 
-        # Get response style instruction
-        style_instruction = self._get_response_style_instruction()
-
-        # Build prompt with tools if enabled
-        if use_tools:
-            tools_prompt = self.tools.format_tools_for_prompt()
-            system_prompt = f"{style_instruction}\n\n{tools_prompt}"
-            full_prompt = f"{system_prompt}\n\nUser: {prompt}\n\nAssistant:"
-        else:
-            full_prompt = f"{style_instruction}\n\nUser: {prompt}\n\nAssistant:"
+        use_tools = False
 
         # First model call: decide on tool usage (non-streaming for tool detection)
         loader = None
@@ -269,174 +294,50 @@ class ChatBot:
             )
             loader.start()
 
+        full_prompt = self._factory_init_prompt(
+            user_prompt=user_prompt, 
+            use_tools=use_tools,
+            response_style=response_style
+        )
+        final_answer = ""
         first_start = time.time()
         response = self.client.generate(
             prompt=full_prompt,
             model=model,
             timeout=self.config.ollama.timeout_first_request
         )
-        timing.initial_thinking = time.time() - first_start
-
-        if loader:
-            loader.stop()
-
-        # Handle errors
+        
         if not response.success:
             return f"Error: {response.error}"
+        else:
+            final_answer = response.text
+        
+            print()
+            print("AI:", final_answer)
+            
+            timing.initial_thinking = time.time() - first_start
+            
+            if show_timing:
+                timing.total = time.time() - total_start
+                print(self.formatter.format_timing(total=timing.total))
+                
+            if loader:
+                loader.stop()
+            return final_answer
 
-        model_response = response.text
-
-        # Check for tool usage
-        if use_tools:
-            tool_name, parameters = self.tools.parse_tool_call(model_response)
-
-            if tool_name and self.tools.has_tool(tool_name):
-                # Execute tool
-                print(f"\n{self.formatter.format_tool_usage(tool_name)}")
-
-                tool_start = time.time()
-                try:
-                    tool_result = self.tools.execute(tool_name, **parameters)
-                    timing.tool_execution = time.time() - tool_start
-
-                    print(f"{self.formatter.format_tool_usage(tool_name, timing.tool_execution)}\n")
-
-                except Exception as e:
-                    timing.tool_execution = time.time() - tool_start
-                    tool_result = f"Tool execution error: {str(e)}"
-
-                # Second model call: generate final answer with streaming
-                tools_prompt = self.tools.format_tools_for_prompt()
-                follow_up_system = f"{style_instruction}\n\n{tools_prompt}"
-                follow_up_prompt = (
-                    f"{follow_up_system}\n\n"
-                    f"User: {prompt}\n\n"
-                    f"Assistant: {model_response}\n\n"
-                    f"Tool Result:\n{tool_result}\n\n"
-                    f"Now provide your final answer to the user based on the tool results:"
-                )
-
-                print("AI: ", end='', flush=True)
-
-                final_start = time.time()
-                full_answer = ""
-
-                try:
-                    for chunk in self.client.generate_stream(
-                        prompt=follow_up_prompt,
-                        model=model,
-                        timeout=self.config.ollama.timeout_tool_request
-                    ):
-                        if chunk.error:
-                            print(f"\nError: {chunk.error}")
-                            return f"Error: {chunk.error}"
-
-                        print(chunk.text, end='', flush=True)
-                        full_answer += chunk.text
-
-                        if chunk.done:
-                            print()  # Newline after response
-                            break
-
-                    timing.final_answer = time.time() - final_start
-
-                except KeyboardInterrupt:
-                    print("\n\n[Response generation interrupted]")
-                    timing.final_answer = time.time() - final_start
-                    if not full_answer:
-                        return "[Interrupted]"
-
-                # Display timing
-                if show_timing:
-                    timing.total = time.time() - total_start
-                    print(self.formatter.format_timing(
-                        initial=timing.initial_thinking,
-                        tool=timing.tool_execution,
-                        final=timing.final_answer,
-                        total=timing.total
-                    ))
-
-                return full_answer
-
-        # No tool used - stream the response directly
-        print("AI: ", end='', flush=True)
-
-        full_response = ""
-        response_start = time.time()
-
-        try:
-            for chunk in self.client.generate_stream(
-                prompt=full_prompt,
-                model=model,
-                timeout=self.config.ollama.timeout_first_request
-            ):
-                if chunk.error:
-                    print(f"\nError: {chunk.error}")
-                    return f"Error: {chunk.error}"
-
-                print(chunk.text, end='', flush=True)
-                full_response += chunk.text
-
-                if chunk.done:
-                    print()  # Newline after response
-                    break
-
-            timing.initial_thinking = time.time() - response_start
-
-        except KeyboardInterrupt:
-            print("\n\n[Response generation interrupted]")
-            if not full_response:
-                return "[Interrupted]"
-
-        # Display timing
-        if show_timing:
-            timing.total = time.time() - total_start
-            print(self.formatter.format_timing(total=timing.total))
-
-        return full_response
-
-    def interactive_chat(self, model: Optional[str] = None, use_streaming: Optional[bool] = None) -> None:
+    def interactive_chat(self) -> None:
         """Run an interactive chat session.
 
         Args:
             model: Model name to use (uses config default if None).
             use_streaming: Whether to use streaming responses (uses config default if None).
         """
-        if model is None:
-            model = self.config.ollama.model_name
-
-        if use_streaming is None:
-            use_streaming = self.config.ui.use_streaming
-
-        # Display header
-        print(self.formatter.format_banner("Ollama Interactive Chat"))
-        print(f"Model: {model}")
-        print("=" * 50)
-        print("Web Search: Enabled (DuckDuckGo)")
-        print(f"Streaming: {'Enabled' if use_streaming else 'Disabled'}")
-        print("Type 'quit' or 'exit' to end the session")
-        print("=" * 50)
-        print()
-
         while True:
             try:
-                user_input = input("\nYou: ").strip()
+                print("User:")
+                user_input = input("\n").strip()
 
-                if not user_input:
-                    continue
-
-                if user_input.lower() in ['quit', 'exit', 'bye']:
-                    print("Goodbye!")
-                    break
-
-                # Get response with or without streaming
-                if use_streaming:
-                    self.chat_stream(user_input, model=model)
-                else:
-                    response = self.chat(user_input, model=model)
-                    print(f"AI: {response}")
-
-                print()
+                self.chat_stream(user_prompt=user_input, model=self.config.ollama.model_name)
 
             except KeyboardInterrupt:
                 print("\n\nGoodbye!")
@@ -451,6 +352,9 @@ class ChatBot:
         Returns:
             True if connection successful, False otherwise.
         """
+        
+        print("\nTesting connection to Ollama...")
+        print("-" * 50)
         success, message = self.client.test_connection()
         print(message)
         return success
