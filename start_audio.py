@@ -265,16 +265,11 @@ class AudioChatBot:
                 print("-" * 60)
 
                 # Process with chatbot (streaming)
-                bot_response = ""
-                try:
-                    bot_response = self.chatbot.chat_stream(user_speech)
-                except KeyboardInterrupt:
-                    print("\n\n⏸️  Response interrupted")
-                    continue
-
+                bot_response = self.chatbot.chat_stream(user_speech)
+                
                 # Speak the response
-                if bot_response:
-                    self.speak(bot_response)
+                self.speak(bot_response)
+                    
 
             except KeyboardInterrupt:
                 print("\n\n👋 Goodbye!")

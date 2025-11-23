@@ -7,6 +7,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is an Ollama-based chatbot with DuckDuckGo web search integration. It provides both command-line and interactive chat interfaces using local LLM models via Ollama's API.
 
 # Important notes from owner for Claude Code
+- Don't write any try_catch.
+- Don't add redundant print() for debugging purpose
 - If you want to write any Markdown docs, write under ./docs folder
 - If you want to write any script for testing purpose, write under ./tests folder. using ./tests/bash for .sh files, ./test/python for python files
 
