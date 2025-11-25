@@ -69,7 +69,8 @@ class AudioChatBot:
         if voices:
             # Try to find a female voice for variety (optional)
             # Default to first available voice
-            self.tts_engine.setProperty('voice', voices[0].id)
+            # 0 is male, 1 is female
+            self.tts_engine.setProperty('voice', voices[1].id)
 
     def speak(self, text: str):
         """Convert text to speech and play it.
@@ -77,18 +78,23 @@ class AudioChatBot:
         Args:
             text: The text to speak aloud.
         """
-        if not text:
-            return
+        # Clean text for better speech (remove markdown, etc.)
+        clean_text = self._clean_text_for_speech(text)
 
-        try:
-            # Clean text for better speech (remove markdown, etc.)
-            clean_text = self._clean_text_for_speech(text)
+        print("\n🔊 Speaking...")
 
-            print("\n🔊 Speaking...")
-            self.tts_engine.say(clean_text)
-            self.tts_engine.runAndWait()
-        except Exception as e:
-            print(f"[!] TTS error: {e}")
+        # Reinitialize TTS engine for each call (fixes Windows issue)
+        engine = pyttsx3.init()
+        engine.setProperty('rate', 175)
+        engine.setProperty('volume', 1.0)
+
+        voices = engine.getProperty('voices')
+        if voices and len(voices) > 1:
+            engine.setProperty('voice', voices[1].id)
+
+        engine.say(clean_text)
+        engine.runAndWait()
+        engine.stop()
 
     def _clean_text_for_speech(self, text: str) -> str:
         """Clean text for better speech output.
@@ -247,37 +253,28 @@ class AudioChatBot:
         conversation_count = 0
 
         while True:
-            try:
-                # Listen for voice input
-                user_speech = self.listen_for_speech(timeout=10)
+            # Listen for voice input
+            user_speech = self.listen_for_speech(timeout=10)
 
-                if not user_speech:
-                    continue
+            if not user_speech:
+                continue
 
-                # Check for exit commands
-                if user_speech.lower() in ['exit', 'quit', 'goodbye', 'bye']:
-                    print("\n👋 Goodbye!")
-                    break
-
-                conversation_count += 1
-                print(f"\n[Query #{conversation_count}]")
-                print(f"You said: {user_speech}")
-                print("-" * 60)
-
-                # Process with chatbot (streaming)
-                bot_response = self.chatbot.chat_stream(user_speech)
-                
-                # Speak the response
-                self.speak(bot_response)
-                    
-
-            except KeyboardInterrupt:
-                print("\n\n👋 Goodbye!")
+            # Check for exit commands
+            if user_speech.lower() in ['exit', 'quit', 'goodbye', 'bye']:
+                print("\n👋 Goodbye!")
                 break
 
-            except Exception as e:
-                print(f"\n❌ Error: {e}")
-                continue
+            conversation_count += 1
+            print(f"\n[Query #{conversation_count}]")
+            print(f"You said: {user_speech}")
+            print("-" * 60)
+
+            # Process with chatbot (streaming)
+            bot_response = self.chatbot.chat_stream(user_speech)
+            print("bot response")
+            # Speak the response
+            self.speak(bot_response)
+
 
     def single_voice_query(self, auto_listen: bool = True) -> str:
         """Process a single voice query.

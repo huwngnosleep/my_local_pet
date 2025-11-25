@@ -77,9 +77,9 @@ class ChatBot:
         if style == ResponseStyle.CONCISE:
             return (
                 "You are a helpful assistant that provides brief, direct answers. "
-                "Answer questions concisely without unnecessary elaboration. "
-                "For factual questions, provide only the essential information. "
-                "Do not include background context, explanations, or additional details unless explicitly requested."
+                # "Answer questions concisely without unnecessary elaboration. "
+                # "For factual questions, provide only the essential information. "
+                # "Do not include background context, explanations, or additional details unless explicitly requested."
             )
         elif style == ResponseStyle.DETAILED:
             return (
@@ -154,7 +154,7 @@ class ChatBot:
             loader.start()
 
         full_prompt = self._factory_init_prompt(
-            user_prompt=user_prompt, 
+            user_prompt=user_prompt,
             use_tools=use_tools,
         )
         final_answer = ""
@@ -164,24 +164,21 @@ class ChatBot:
             model=model,
             timeout=self.config.ollama.timeout_first_request
         )
+
+        final_answer = response.text
+    
+        print()
+        print("AI:", final_answer)
         
-        if not response.success:
-            return f"Error: {response.error}"
-        else:
-            final_answer = response.text
+        timing.initial_thinking = time.time() - first_start
         
-            print()
-            print("AI:", final_answer)
+        if show_timing:
+            timing.total = time.time() - total_start
+            print(self.formatter.format_timing(total=timing.total))
             
-            timing.initial_thinking = time.time() - first_start
-            
-            if show_timing:
-                timing.total = time.time() - total_start
-                print(self.formatter.format_timing(total=timing.total))
-                
-            if loader:
-                loader.stop()
-            return final_answer
+        if loader:
+            loader.stop()
+        return final_answer
 
     def interactive_chat(self) -> None:
         """Run an interactive chat session.
